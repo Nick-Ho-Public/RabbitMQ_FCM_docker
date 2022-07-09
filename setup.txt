@@ -1,0 +1,9 @@
+1. Clone the repository from GitHub https://github.com/Nick-Ho-Public/RabbitMQ_FCM_docker
+2. Check the minimum requirements
+3. Run 'docker compose up'
+
+
+Accessible Services
+RabbitMQ: http://localhost:15672/ username:root password:root
+MySQL: localhost:3306 username:user password:password
+phpMyAdmin: http://localhost:8080/ username:user password:password
