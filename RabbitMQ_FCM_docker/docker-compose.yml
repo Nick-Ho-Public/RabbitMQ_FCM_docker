@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+# 5 serivces to be created
+# rabbitmq: port:5672(AMQP)&15672(WEB) depends_on:mysqldb
+# producer: depends_on:rabbitmq
+# consumer: depends_on:rabbitmq
+# mysql: port:3306
+# phpmyadmin: port:8080 depends_on:mysqldb
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: 'rabbitmq:3.10-management-alpine'
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - './data/rabbitmq:/var/lib/rabbitmq'
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+
+  producer:
+    container_name: producer
+    build: producer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+    volumes:
+      - './producer:/usr/src/app/producer'
+
+  consumer:
+    container_name: consumer
+    build: consumer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+    volumes:
+      - './consumer:/usr/src/app/consumer'
+
+  mysqldb:
+    container_name: mysqldb
+    image: "mysql:8.0.28"
+    platform: linux/amd64
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_USER=${MYSQL_ROOT_USER}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - './data/mysql:/var/lib/mysql'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "-u$MYSQL_ROOT_USER", "-p$MYSQL_ROOT_PASSWORD",  "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${MYSQL_PORT}:${MYSQL_PORT}
+      
+  myadmin:
+    container_name: phpmyadmin
+    image: "phpmyadmin:5"
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    environment:
+      - PMA_HOST=${MYSQL_HOST}
+    ports:
+      - '8080:80'
